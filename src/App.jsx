@@ -432,10 +432,47 @@ function Stats({ indexData, documents }) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// LOCAL STORAGE HELPERS
+// ═══════════════════════════════════════════════════════════
+const STORAGE_KEY = "sift_documents";
+
+function saveToStorage(docs) {
+  try {
+    // Store just the essentials: name, text, type, id
+    const slim = docs.map(({ id, name, text, type, size }) => ({ id, name, text, type, size }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+  } catch (e) {
+    console.warn("localStorage save failed:", e.message);
+    // Likely hit the storage limit — fail silently
+  }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const docs = JSON.parse(raw);
+    if (!Array.isArray(docs)) return [];
+    return docs;
+  } catch (e) {
+    console.warn("localStorage load failed:", e.message);
+    return [];
+  }
+}
+
+function clearStorage() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (e) {
+    // fail silently
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════
 export default function App() {
-  const [documents, setDocuments] = useState([]);
+  const [documents, setDocuments] = useState(() => loadFromStorage());
   const [indexData, setIndexData] = useState(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -451,6 +488,11 @@ export default function App() {
     }
     const idx = buildIndex(documents);
     setIndexData(idx);
+  }, [documents]);
+
+  // Persist documents to localStorage whenever they change
+  useEffect(() => {
+    saveToStorage(documents);
   }, [documents]);
 
   // Re-search whenever query or index changes
@@ -516,6 +558,7 @@ export default function App() {
     setDocuments([]);
     setQuery("");
     setResults([]);
+    clearStorage();
   }
 
   return (
