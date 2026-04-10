@@ -82,6 +82,7 @@ function search(query, indexData, documents) {
   if (queryTerms.length === 0) return [];
 
   const scores = {};
+  const occurrences = {};
 
   queryTerms.forEach((term) => {
     const entry = index[term];
@@ -92,6 +93,7 @@ function search(query, indexData, documents) {
     Object.entries(entry.postings).forEach(([docId, tf]) => {
       const normalizedTf = tf / (docLengths[docId] || 1);
       scores[docId] = (scores[docId] || 0) + normalizedTf * idf;
+      occurrences[docId] = (occurrences[docId] || 0) + tf;
     });
   });
 
@@ -103,6 +105,7 @@ function search(query, indexData, documents) {
       return {
         ...doc,
         score,
+        occurrences: occurrences[docId] || 0,
         snippet: extractSnippet(doc.text, queryTerms),
         matchedTerms: queryTerms.filter((t) => index[t]?.postings[docId]),
       };
@@ -380,6 +383,7 @@ function ResultCard({ result, rank }) {
       </div>
       <div style={st.resultMeta}>
         {result.matchedTerms.length} term{result.matchedTerms.length !== 1 ? "s" : ""} matched
+        · {result.occurrences} occurrence{result.occurrences !== 1 ? "s" : ""}
         · {(result.text.length / 1024).toFixed(1)}KB
         · {result.text.split(/\s+/).length.toLocaleString()} words
       </div>
